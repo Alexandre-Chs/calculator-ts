@@ -1,6 +1,16 @@
-export default class Header extends HTMLElement {
+export default class HeaderComponent extends HTMLElement {
   constructor() {
     super();
-    this.innerHTML = `<h1 class="text-4xl font-bold underline">Header</h1>`;
+    this.initTemplate();
+  }
+
+  initTemplate() {
+    this.innerHTML = `
+      <header class="bg-blue-500 text-white p-4">
+        <h1 class="text-center">Web Components</h1>
+      </header>
+    `;
   }
 }
+
+customElements.define("custom-header", HeaderComponent);
