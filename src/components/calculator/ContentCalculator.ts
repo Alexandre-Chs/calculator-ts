@@ -48,21 +48,70 @@ export default class ContentCalculator extends HTMLElement {
         </div>
     `;
 
+    let values = [];
+
     const display = this.querySelector("#display");
     if (!display) return;
 
-    const buttons = this.querySelectorAll(".btn-calculator");
-    console.log(buttons);
+    const buttons = this.querySelectorAll("button");
     buttons.forEach((button) => {
       button.addEventListener("click", (e) => {
         const target = e.target as HTMLElement;
         const value = target.textContent;
-        if (display.textContent === "0") {
+
+        if (
+          value === "+" ||
+          value === "-" ||
+          value === "x" ||
+          (value === "/" && display.textContent !== "0")
+        ) {
+          if (display.textContent) {
+            values.push(Number(display.textContent));
+            if (value === "x") {
+              values.push("*");
+            } else {
+              values.push(value);
+            }
+          }
+          display.textContent = "0";
+        }
+
+        if (value === "=") {
+          values.push(Number(display.textContent));
+          const resultCount = result(values);
+          display.textContent = resultCount;
+        }
+
+        if (
+          display.textContent === "0" &&
+          value !== "." &&
+          value !== "=" &&
+          value !== "x" &&
+          value !== "+" &&
+          value !== "-" &&
+          value !== "/"
+        ) {
           display.textContent = value;
-        } else if (display.textContent && display) {
+        } else if (
+          display.textContent &&
+          value !== "=" &&
+          value !== "x" &&
+          value !== "+" &&
+          value !== "-" &&
+          value !== "/"
+        ) {
           display.textContent += value;
         }
       });
     });
   }
+}
+
+export function result(values: (string | number)[]) {
+  let stringEval = "";
+  for (let i = 0; i < values.length; i++) {
+    stringEval += values[i];
+  }
+
+  return eval(stringEval);
 }
