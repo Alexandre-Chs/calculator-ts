@@ -1,117 +1,137 @@
 export default class ContentCalculator extends HTMLElement {
+  private display!: HTMLDivElement;
+  private currentInput: string;
+  private operations: string[];
+
   constructor() {
     super();
-    this.innerHTML = `
-    <style>
-        .btn-calculator {
-            font-size: 1.5rem;
-            padding: 1rem;
-            background-color: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.25rem;
-            color: black;
-            cursor: pointer;
-        }
+    this.currentInput = "0";
+    this.operations = [];
+    this.attachShadow({ mode: "open" });
+    this.render();
+  }
 
-        .btn-calculator-operator {
-            background-color: #f59e0b;
-            color: white;
-            border-radius: 0.25rem;
-        }
+  connectedCallback() {
+    this.initializeButtons(); // Liaison des événements
+  }
 
+  private render() {
+    if (!this.shadowRoot) return;
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .calculator {
+          font-size: 1.5rem;
+          padding: 1rem;
+          background-color: #f3f4f6;
+          border: 1px solid #e5e7eb;
+          border-radius: 0.25rem;
+          color: black;
+          cursor: pointer;
+        }
+        .operator {
+          background-color: #f59e0b;
+          color: white;
+          border-radius: 0.25rem;
+        }
         .display {
-            font-size: 2rem;
-            padding: 1rem;
-            border: 1px solid #e5e7eb;
-            background-color: white;
-            color: black;
-            text-align: right;
+          font-size: 2rem;
+          padding: 1rem;
+          border: 1px solid #e5e7eb;
+          background-color: white;
+          color: black;
+          text-align: right;
+          margin-bottom: 1rem;
         }
-    </style>
-        <div class='display mb-4 rounded-md' id='display'>0</div>
-        <div class='grid grid-cols-4 gap-2'>
-            <button class='btn-calculator'>7</button>
-            <button class='btn-calculator'>8</button>
-            <button class='btn-calculator'>9</button>
-            <button class='btn-calculator-operator'>x</button>
-            <button class='btn-calculator'>4</button>
-            <button class='btn-calculator'>5</button>
-            <button class='btn-calculator'>6</button>
-            <button class='btn-calculator-operator'>-</button>
-            <button class='btn-calculator'>1</button>
-            <button class='btn-calculator'>2</button>
-            <button class='btn-calculator'>3</button>
-            <button class='btn-calculator-operator'>+</button>
-            <button class='col-span-2 btn-calculator'>0</button>
-            <button class="btn-calculator-operator">.</button>
-            <button class="btn-calculator-operator">=</button>
-        </div>
+        .button-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0.5rem;
+        }
+      </style>
+
+      <div class="display" id="display">0</div>
+      <div class="button-grid">
+        ${this.getButtonsMarkup()}
+      </div>
     `;
 
-    let values = [];
+    this.display = this.shadowRoot.querySelector("#display") as HTMLDivElement;
+  }
 
-    const display = this.querySelector("#display");
-    if (!display) return;
+  private getButtonsMarkup(): string {
+    const buttons = [
+      "7",
+      "8",
+      "9",
+      "x",
+      "4",
+      "5",
+      "6",
+      "-",
+      "1",
+      "2",
+      "3",
+      "+",
+      "0",
+      ".",
+      "=",
+      "/",
+    ];
 
-    const buttons = this.querySelectorAll("button");
+    return buttons
+      .map((btn) => {
+        const className = ["+", "-", "x", "/", "="].includes(btn)
+          ? "calculator operator"
+          : "calculator";
+        return `<button class="${className}">${btn}</button>`;
+      })
+      .join("");
+  }
+
+  private initializeButtons() {
+    if (!this.shadowRoot) return;
+
+    const buttons = this.shadowRoot.querySelectorAll("button");
     buttons.forEach((button) => {
       button.addEventListener("click", (e) => {
-        const target = e.target as HTMLElement;
-        const value = target.textContent;
-
-        if (
-          value === "+" ||
-          value === "-" ||
-          value === "x" ||
-          (value === "/" && display.textContent !== "0")
-        ) {
-          if (display.textContent) {
-            values.push(Number(display.textContent));
-            if (value === "x") {
-              values.push("*");
-            } else {
-              values.push(value);
-            }
-          }
-          display.textContent = "0";
-        }
-
-        if (value === "=") {
-          values.push(Number(display.textContent));
-          const resultCount = result(values);
-          display.textContent = resultCount;
-        }
-
-        if (
-          display.textContent === "0" &&
-          value !== "." &&
-          value !== "=" &&
-          value !== "x" &&
-          value !== "+" &&
-          value !== "-" &&
-          value !== "/"
-        ) {
-          display.textContent = value;
-        } else if (
-          display.textContent &&
-          value !== "=" &&
-          value !== "x" &&
-          value !== "+" &&
-          value !== "-" &&
-          value !== "/"
-        ) {
-          display.textContent += value;
-        }
+        const target = e.target as HTMLButtonElement;
+        this.handleButtonClick(target.textContent || "");
       });
     });
   }
-}
 
-export function result(values: (string | number)[]) {
-  let stringEval = "";
-  for (let i = 0; i < values.length; i++) {
-    stringEval += values[i];
+  private handleButtonClick(value: string) {
+    if (value === "=") {
+      this.operations.push(this.currentInput);
+      const result = this.calculateResult();
+      this.display.textContent = String(result);
+      this.operations = [];
+      this.currentInput = "0";
+    } else if (["+", "-", "x", "/"].includes(value)) {
+      this.operations.push(this.currentInput);
+      this.operations.push(this.convertOperator(value));
+      this.currentInput = "0";
+    } else {
+      this.currentInput =
+        this.currentInput === "0" ? value : this.currentInput + value;
+      this.display.textContent = this.currentInput;
+    }
   }
 
-  return eval(stringEval);
+  private convertOperator(value: string): string {
+    return value === "x" ? "*" : value;
+  }
+
+  private calculateResult(): number {
+    const expression = this.operations.join("");
+    console.log(expression);
+    try {
+      const result = Function(`"use strict"; return (${expression});`)();
+      return result;
+    } catch (error) {
+      console.error("Erreur lors du calcul:", error);
+      return 0;
+    }
+  }
 }
